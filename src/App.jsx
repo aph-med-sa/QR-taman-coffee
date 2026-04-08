@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 
 const imageFiles = [
-  'dH8hE7_8f85fdaf32a3da5f.jpg',
   'dH8hE7_9ae51d0be8607b39.jpg',
+  'dH8hE7_8f85fdaf32a3da5f.jpg',
   'dH8hE7_ce4c7d05f145216a.jpg',
 ]
 
@@ -24,8 +24,8 @@ function useHashRoute() {
 function MenuViewer({ images }) {
   const [index, setIndex] = useState(0)
   const pointerStartXRef = useRef(null)
-  const hideTimerRef = useRef(null)
-  const [controlsVisible, setControlsVisible] = useState(true)
+  const hintTimersRef = useRef({ show: null, hide: null })
+  const [controlsVisible, setControlsVisible] = useState(false)
   const [transition, setTransition] = useState(null)
   const [hintActive, setHintActive] = useState(false)
   const [openAnim, setOpenAnim] = useState(true)
@@ -34,22 +34,33 @@ function MenuViewer({ images }) {
   const canGoPrev = index > 0
   const canGoNext = index < length - 1
 
-  const bumpControls = useCallback(() => {
-    setControlsVisible(true)
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
-    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 650)
+  useEffect(() => {
+    const openTimer = setTimeout(() => setOpenAnim(false), 450)
+    return () => {
+      clearTimeout(openTimer)
+    }
+  }, [])
+
+  const scheduleHint = useCallback(() => {
+    const timers = hintTimersRef.current
+    if (timers.show) clearTimeout(timers.show)
+    if (timers.hide) clearTimeout(timers.hide)
+
+    setControlsVisible(false)
+    timers.show = setTimeout(() => {
+      setControlsVisible(true)
+      timers.hide = setTimeout(() => setControlsVisible(false), 260)
+    }, 1000)
   }, [])
 
   useEffect(() => {
-    bumpControls()
-    setHintActive(true)
-    const hintTimer = setTimeout(() => setHintActive(false), 900)
-    const openTimer = setTimeout(() => setOpenAnim(false), 450)
-    return () => {
-      clearTimeout(hintTimer)
-      clearTimeout(openTimer)
+    scheduleHint()
+    if (index === 0 && canGoNext) {
+      setHintActive(true)
+      const t = setTimeout(() => setHintActive(false), 1350)
+      return () => clearTimeout(t)
     }
-  }, [bumpControls])
+  }, [canGoNext, index, scheduleHint])
 
   const startTransition = useCallback(
     (to, dir) => {
@@ -64,31 +75,28 @@ function MenuViewer({ images }) {
     const timer = setTimeout(() => {
       setIndex(transition.to)
       setTransition(null)
-    }, 520)
+    }, 260)
     return () => clearTimeout(timer)
   }, [transition])
 
   const goNext = useCallback(() => {
-    bumpControls()
     if (!canGoNext) return
     startTransition(index + 1, 'next')
-  }, [bumpControls, canGoNext, index, startTransition])
+  }, [canGoNext, index, startTransition])
 
   const goPrev = useCallback(() => {
-    bumpControls()
     if (!canGoPrev) return
     startTransition(index - 1, 'prev')
-  }, [bumpControls, canGoPrev, index, startTransition])
+  }, [canGoPrev, index, startTransition])
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      bumpControls()
       if (e.key === 'ArrowLeft') goNext()
       if (e.key === 'ArrowRight') goPrev()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [goNext, goPrev, bumpControls])
+  }, [goNext, goPrev])
 
   useEffect(() => {
     const preload = (src) => {
@@ -100,12 +108,10 @@ function MenuViewer({ images }) {
   }, [images, index])
 
   const onPointerDown = (e) => {
-    bumpControls()
     pointerStartXRef.current = e.clientX
   }
 
   const onPointerUp = (e) => {
-    bumpControls()
     const startX = pointerStartXRef.current
     pointerStartXRef.current = null
     if (typeof startX !== 'number') return
@@ -122,8 +128,6 @@ function MenuViewer({ images }) {
       dir="rtl"
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
-      onMouseMove={bumpControls}
-      onTouchMove={bumpControls}
     >
       <div className="menu-stage">
         {transition ? (
@@ -131,13 +135,13 @@ function MenuViewer({ images }) {
             <img
               src={images[transition.from]}
               alt=""
-              className={`menu-img ${transition.dir === 'next' ? 'menu-flip-out-next' : 'menu-flip-out-prev'}`}
+              className={`menu-img ${transition.dir === 'next' ? 'menu-swap-out-next' : 'menu-swap-out-prev'}`}
               draggable={false}
             />
             <img
               src={images[transition.to]}
               alt=""
-              className={`menu-img ${transition.dir === 'next' ? 'menu-flip-in-next' : 'menu-flip-in-prev'}`}
+              className={`menu-img ${transition.dir === 'next' ? 'menu-swap-in-next' : 'menu-swap-in-prev'}`}
               draggable={false}
             />
           </>

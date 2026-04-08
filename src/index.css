@@ -17,7 +17,6 @@ body {
 .menu-stage {
   position: absolute;
   inset: 0;
-  perspective: 1400px;
   overflow: hidden;
 }
 
@@ -28,52 +27,46 @@ body {
   height: 100%;
   object-fit: contain;
   user-select: none;
-  backface-visibility: hidden;
-  transform-style: preserve-3d;
 }
 
 .menu-open {
   animation: fadeIn .35s ease both;
 }
 
-.menu-flip-out-next {
-  transform-origin: left center;
-  animation: flipOutNext .52s ease both;
+.menu-swap-out-next {
+  animation: swapOutNext .26s ease both;
 }
 
-.menu-flip-in-next {
-  transform-origin: right center;
-  animation: flipInNext .52s ease both;
+.menu-swap-in-next {
+  animation: swapInNext .26s ease both;
 }
 
-.menu-flip-out-prev {
-  transform-origin: right center;
-  animation: flipOutPrev .52s ease both;
+.menu-swap-out-prev {
+  animation: swapOutPrev .26s ease both;
 }
 
-.menu-flip-in-prev {
-  transform-origin: left center;
-  animation: flipInPrev .52s ease both;
+.menu-swap-in-prev {
+  animation: swapInPrev .26s ease both;
 }
 
-@keyframes flipOutNext {
-  from { opacity: 1; transform: translateX(0) rotateY(0deg); }
-  to { opacity: 0; transform: translateX(-10%) rotateY(-35deg); }
+@keyframes swapOutNext {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-3%); }
 }
 
-@keyframes flipInNext {
-  from { opacity: 0; transform: translateX(10%) rotateY(35deg); }
-  to { opacity: 1; transform: translateX(0) rotateY(0deg); }
+@keyframes swapInNext {
+  from { opacity: 0; transform: translateX(3%); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes flipOutPrev {
-  from { opacity: 1; transform: translateX(0) rotateY(0deg); }
-  to { opacity: 0; transform: translateX(10%) rotateY(35deg); }
+@keyframes swapOutPrev {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(3%); }
 }
 
-@keyframes flipInPrev {
-  from { opacity: 0; transform: translateX(-10%) rotateY(-35deg); }
-  to { opacity: 1; transform: translateX(0) rotateY(0deg); }
+@keyframes swapInPrev {
+  from { opacity: 0; transform: translateX(-3%); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .arrow-hint {
