@@ -26,36 +26,77 @@ function MenuViewer({ images }) {
   const pointerStartXRef = useRef(null)
   const hideTimerRef = useRef(null)
   const [controlsVisible, setControlsVisible] = useState(true)
+  const [transition, setTransition] = useState(null)
+  const [hintActive, setHintActive] = useState(false)
+  const [openAnim, setOpenAnim] = useState(true)
 
   const length = images.length
-  const goPrev = useCallback(() => setIndex((i) => (i - 1 + length) % length), [length])
-  const goNext = useCallback(() => setIndex((i) => (i + 1) % length), [length])
+  const canGoPrev = index > 0
+  const canGoNext = index < length - 1
 
   const bumpControls = useCallback(() => {
     setControlsVisible(true)
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
-    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 1000)
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 650)
   }, [])
+
+  useEffect(() => {
+    bumpControls()
+    setHintActive(true)
+    const hintTimer = setTimeout(() => setHintActive(false), 900)
+    const openTimer = setTimeout(() => setOpenAnim(false), 450)
+    return () => {
+      clearTimeout(hintTimer)
+      clearTimeout(openTimer)
+    }
+  }, [bumpControls])
+
+  const startTransition = useCallback(
+    (to, dir) => {
+      if (transition) return
+      setTransition({ from: index, to, dir })
+    },
+    [index, transition],
+  )
+
+  useEffect(() => {
+    if (!transition) return
+    const timer = setTimeout(() => {
+      setIndex(transition.to)
+      setTransition(null)
+    }, 520)
+    return () => clearTimeout(timer)
+  }, [transition])
+
+  const goNext = useCallback(() => {
+    bumpControls()
+    if (!canGoNext) return
+    startTransition(index + 1, 'next')
+  }, [bumpControls, canGoNext, index, startTransition])
+
+  const goPrev = useCallback(() => {
+    bumpControls()
+    if (!canGoPrev) return
+    startTransition(index - 1, 'prev')
+  }, [bumpControls, canGoPrev, index, startTransition])
 
   useEffect(() => {
     const onKeyDown = (e) => {
       bumpControls()
-      if (e.key === 'ArrowLeft') goPrev()
-      if (e.key === 'ArrowRight') goNext()
+      if (e.key === 'ArrowLeft') goNext()
+      if (e.key === 'ArrowRight') goPrev()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [goNext, goPrev, bumpControls])
 
   useEffect(() => {
-    const nextSrc = images[(index + 1) % images.length]
-    const prevSrc = images[(index - 1 + images.length) % images.length]
     const preload = (src) => {
       const img = new Image()
       img.src = src
     }
-    preload(nextSrc)
-    preload(prevSrc)
+    if (index + 1 < images.length) preload(images[index + 1])
+    if (index - 1 >= 0) preload(images[index - 1])
   }, [images, index])
 
   const onPointerDown = (e) => {
@@ -84,31 +125,53 @@ function MenuViewer({ images }) {
       onMouseMove={bumpControls}
       onTouchMove={bumpControls}
     >
-      <img
-        src={images[index]}
-        alt=""
-        className="h-full w-full object-contain select-none fade-in"
-        draggable={false}
-        key={index}
-      />
+      <div className="menu-stage">
+        {transition ? (
+          <>
+            <img
+              src={images[transition.from]}
+              alt=""
+              className={`menu-img ${transition.dir === 'next' ? 'menu-flip-out-next' : 'menu-flip-out-prev'}`}
+              draggable={false}
+            />
+            <img
+              src={images[transition.to]}
+              alt=""
+              className={`menu-img ${transition.dir === 'next' ? 'menu-flip-in-next' : 'menu-flip-in-prev'}`}
+              draggable={false}
+            />
+          </>
+        ) : (
+          <img
+            src={images[index]}
+            alt=""
+            className={`menu-img ${openAnim ? 'menu-open' : ''}`}
+            draggable={false}
+          />
+        )}
+      </div>
 
-      <button
-        type="button"
-        aria-label="السابق"
-        onClick={goPrev}
-        className={`absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80 transition-opacity ${controlsVisible ? 'opacity-70' : 'opacity-0'}`}
-      >
-        <ChevronLeft className="h-7 w-7" />
-      </button>
+      {canGoNext ? (
+        <button
+          type="button"
+          aria-label="التالي"
+          onClick={goNext}
+          className={`absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80 transition-opacity duration-200 ${controlsVisible ? 'opacity-60' : 'opacity-0 pointer-events-none'}`}
+        >
+          <ChevronLeft className={`h-7 w-7 ${index === 0 && hintActive ? 'arrow-hint' : ''}`} />
+        </button>
+      ) : null}
 
-      <button
-        type="button"
-        aria-label="التالي"
-        onClick={goNext}
-        className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80 transition-opacity ${controlsVisible ? 'opacity-70' : 'opacity-0'}`}
-      >
-        <ChevronRight className="h-7 w-7" />
-      </button>
+      {canGoPrev ? (
+        <button
+          type="button"
+          aria-label="السابق"
+          onClick={goPrev}
+          className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80 transition-opacity duration-200 ${controlsVisible ? 'opacity-60' : 'opacity-0 pointer-events-none'}`}
+        >
+          <ChevronRight className="h-7 w-7" />
+        </button>
+      ) : null}
     </div>
   )
 }
