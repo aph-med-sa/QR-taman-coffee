@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+
+body {
+  font-family: 'Cairo', sans-serif;
+}
+
+
+/* Custom styles for Accordion and Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease-in-out, padding 0.35s ease-in-out;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.accordion-content.open {
+    max-height: 1500px; /* A large enough value to fit content */
+    padding-top: 1rem;  /* 1rem = p-4 */
+    padding-bottom: 1rem;
+}
