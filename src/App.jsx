@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, Download, ImageDown } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 
@@ -24,19 +24,28 @@ function useHashRoute() {
 function MenuViewer({ images }) {
   const [index, setIndex] = useState(0)
   const pointerStartXRef = useRef(null)
+  const hideTimerRef = useRef(null)
+  const [controlsVisible, setControlsVisible] = useState(true)
 
   const length = images.length
   const goPrev = useCallback(() => setIndex((i) => (i - 1 + length) % length), [length])
   const goNext = useCallback(() => setIndex((i) => (i + 1) % length), [length])
 
+  const bumpControls = useCallback(() => {
+    setControlsVisible(true)
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 1000)
+  }, [])
+
   useEffect(() => {
     const onKeyDown = (e) => {
+      bumpControls()
       if (e.key === 'ArrowLeft') goPrev()
       if (e.key === 'ArrowRight') goNext()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [goNext, goPrev])
+  }, [goNext, goPrev, bumpControls])
 
   useEffect(() => {
     const nextSrc = images[(index + 1) % images.length]
@@ -50,10 +59,12 @@ function MenuViewer({ images }) {
   }, [images, index])
 
   const onPointerDown = (e) => {
+    bumpControls()
     pointerStartXRef.current = e.clientX
   }
 
   const onPointerUp = (e) => {
+    bumpControls()
     const startX = pointerStartXRef.current
     pointerStartXRef.current = null
     if (typeof startX !== 'number') return
@@ -70,19 +81,22 @@ function MenuViewer({ images }) {
       dir="rtl"
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
+      onMouseMove={bumpControls}
+      onTouchMove={bumpControls}
     >
       <img
         src={images[index]}
         alt=""
-        className="h-full w-full object-contain select-none"
+        className="h-full w-full object-contain select-none fade-in"
         draggable={false}
+        key={index}
       />
 
       <button
         type="button"
         aria-label="السابق"
         onClick={goPrev}
-        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80"
+        className={`absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80 transition-opacity ${controlsVisible ? 'opacity-70' : 'opacity-0'}`}
       >
         <ChevronLeft className="h-7 w-7" />
       </button>
@@ -91,7 +105,7 @@ function MenuViewer({ images }) {
         type="button"
         aria-label="التالي"
         onClick={goNext}
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80"
+        className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white backdrop-blur hover:bg-black/70 active:bg-black/80 transition-opacity ${controlsVisible ? 'opacity-70' : 'opacity-0'}`}
       >
         <ChevronRight className="h-7 w-7" />
       </button>
@@ -102,6 +116,7 @@ function MenuViewer({ images }) {
 function QrPage({ menuUrl }) {
   const [dataUrl, setDataUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -124,6 +139,39 @@ function QrPage({ menuUrl }) {
       window.setTimeout(() => setCopied(false), 1200)
     } catch {
       setCopied(false)
+    }
+  }
+
+  const savePng = async () => {
+    try {
+      setDownloading(true)
+      const url = await QRCode.toDataURL(menuUrl, { width: 1024, margin: 2, errorCorrectionLevel: 'M' })
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'tamancafe-menu-qr.png'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const saveSvg = async () => {
+    try {
+      setDownloading(true)
+      const svg = await QRCode.toString(menuUrl, { type: 'svg', margin: 2, errorCorrectionLevel: 'M', width: 1024 })
+      const blob = new Blob([svg], { type: 'image/svg+xml' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'tamancafe-menu-qr.svg'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -165,6 +213,27 @@ function QrPage({ menuUrl }) {
             <Copy className="h-4 w-4" />
             {copied ? 'تم النسخ' : 'نسخ الرابط'}
           </button>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={saveSvg}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-600 disabled:opacity-60"
+            >
+              <ImageDown className="h-4 w-4" />
+              تحميل SVG
+            </button>
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={savePng}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-700 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-600 disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" />
+              تحميل PNG
+            </button>
+          </div>
         </div>
       </div>
     </div>
